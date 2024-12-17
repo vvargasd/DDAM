@@ -1,0 +1,49 @@
+{
+  "project_info": {
+    "project_number": "914295709347",
+    "firebase_url": "https://lively-wave-297320-default-rtdb.firebaseio.com",
+    "project_id": "lively-wave-297320",
+    "storage_bucket": "lively-wave-297320.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:914295709347:android:6022840a715e64cb44a916",
+        "android_client_info": {
+          "package_name": "com.ddam.TTT"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3EM9SEjjeqYfmA_Pqzo6EK5t2dSLbadc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:914295709347:android:d8006cf361bf1dbb44a916",
+        "android_client_info": {
+          "package_name": "com.ddam.myapplication"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3EM9SEjjeqYfmA_Pqzo6EK5t2dSLbadc"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
