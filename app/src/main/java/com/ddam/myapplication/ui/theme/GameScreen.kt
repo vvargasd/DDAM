@@ -1,13 +1,21 @@
 package com.ddam.myapplication.ui.theme
 
 
-import androidx.compose.foundation.border
+import android.content.Context
+import android.media.MediaPlayer
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
+
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -24,12 +32,16 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
+
+import androidx.compose.ui.res.painterResource
+
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.ddam.myapplication.R
 import com.google.firebase.database.*
 import com.google.firebase.database.DatabaseReference
-
 
 
 
@@ -43,13 +55,46 @@ fun GameScreen(menuOption: MenuOption) {
 }
 
 @Composable
+fun CellContent(symbol: String) {
+    when (symbol) {
+        "X" -> Image(
+            painter = painterResource(R.drawable.x_image),
+            contentDescription = "X",
+            modifier = Modifier.size(64.dp)
+        )
+        "O" -> Image(
+            painter = painterResource(R.drawable.o_image),
+            contentDescription = "O",
+            modifier = Modifier.size(64.dp)
+        )
+        else -> {}
+    }
+}
+
+fun playSound(context: Context, soundResId: Int) {
+    val mediaPlayer = MediaPlayer.create(context, soundResId)
+    mediaPlayer.setOnCompletionListener {
+        it.release() // Libera recursos cuando termine de reproducir
+    }
+    mediaPlayer.start()
+}
+
+@Composable
 fun SinglePlayerGame() {
     // Estado del tablero, jugador actual, ganador y empate
     val boardState = remember { mutableStateOf(List(9) { "" }) }
     val currentPlayer = remember { mutableStateOf("X") } // El jugador siempre es "X"
     val winner = remember { mutableStateOf<String?>(null) }
     val isDraw = remember { mutableStateOf(false) }
+    val context = LocalContext.current
+    Box(
+        modifier = Modifier
 
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(top = 32.dp),
+            contentAlignment = Alignment.Center
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -67,10 +112,10 @@ fun SinglePlayerGame() {
                     winner,
                     isDraw
                 )
+                val soundResId = if (currentPlayer.value == "X") R.raw.x_sound else R.raw.o_sound
+                playSound(context, soundResId)
             },
-            modifier = Modifier
-                .weight(1f)
-                .padding(bottom = 16.dp)
+
         )
 
         // Mensaje de estado del juego
@@ -82,6 +127,7 @@ fun SinglePlayerGame() {
 
         // Botón para reiniciar el juego
         RestartButton(boardState, currentPlayer, winner, isDraw)
+        }
     }
 }
 
@@ -91,36 +137,47 @@ fun TwoPlayerGame() {
     val currentPlayer = remember { mutableStateOf("X") } // El jugador siempre es "X"
     val winner = remember { mutableStateOf<String?>(null) }
     val isDraw = remember { mutableStateOf(false) }
+    val context = LocalContext.current
 
-    Column(
+    Box(
         modifier = Modifier
+
             .fillMaxSize()
-            .padding(16.dp),
-        verticalArrangement = Arrangement.SpaceBetween
+            .background(Color.Black)
+            .padding(top = 32.dp),
+        contentAlignment = Alignment.Center
     ) {
-        TicTacToeGrid(
-            boardState = boardState.value,
-            onCellClick = { index ->
-                handlePlayerMove(
-                    index,
-                    boardState,
-                    currentPlayer,
-                    winner,
-                    isDraw
-                )
-            },
+        Column(
             modifier = Modifier
-                .weight(1f)
-                .padding(bottom = 16.dp)
-        )
+                .fillMaxSize()
+                .padding(16.dp),
+            verticalArrangement = Arrangement.SpaceBetween
+        ) {
+            TicTacToeGrid(
+                boardState = boardState.value,
+                onCellClick = { index ->
+                    handlePlayerMove(
+                        index,
+                        boardState,
+                        currentPlayer,
+                        winner,
+                        isDraw
+                    )
+                    if (boardState.value[index].isNotEmpty()) {
+                        val soundResId = if (boardState.value[index] == "X") R.raw.x_sound else R.raw.o_sound
+                        playSound(context, soundResId)
+                    }
+                },
+            )
 
-        Text(
-            text = gameStatus(winner, isDraw, currentPlayer),
-            fontSize = 20.sp,
-            modifier = Modifier.align(Alignment.CenterHorizontally)
-        )
+            Text(
+                text = gameStatus(winner, isDraw, currentPlayer),
+                fontSize = 20.sp,
+                modifier = Modifier.align(Alignment.CenterHorizontally)
+            )
 
-        RestartButton(boardState, currentPlayer, winner, isDraw)
+            RestartButton(boardState, currentPlayer, winner, isDraw)
+        }
     }
 }
 
@@ -133,20 +190,19 @@ data class GameData(
     val isDraw: Boolean = false
 )
 
-
-
 @Composable
 fun OnlineGame() {
     val database = FirebaseDatabase.getInstance()
     val gamesRef = database.getReference("games")
-
+    val context = LocalContext.current
     val roomId = remember { mutableStateOf<String?>(null) }
-    val playerId = "Player_${System.currentTimeMillis()}"
+
     val roomList = remember { mutableStateOf<List<String>>(emptyList()) }
     val showRoomList = remember { mutableStateOf(false) }
 
     if (roomId.value == null) {
         // Pantalla inicial para crear o unirse a una sala
+
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -158,7 +214,7 @@ fun OnlineGame() {
 
             // Botón para crear una sala
             Button(onClick = {
-                roomId.value = createGameRoom(gamesRef, playerId)
+                roomId.value = createGameRoom(gamesRef, "Player_1")
             }) {
                 Text("Crear Sala")
             }
@@ -185,7 +241,7 @@ fun OnlineGame() {
                                 .fillMaxWidth()
                                 .padding(8.dp)
                                 .clickable {
-                                    joinGameRoom(gamesRef, room, playerId) { success ->
+                                    joinGameRoom(gamesRef, room, "Player_2") { success ->
                                         if (success) {
                                             roomId.value= room
                                             showRoomList.value = false
@@ -199,9 +255,10 @@ fun OnlineGame() {
                 }
             }
         }
+
     } else {
         // Pantalla del juego una vez que el jugador se ha unido
-        OnlineGameRoom(gamesRef, roomId.value!!, playerId)
+        OnlineGameRoom(gamesRef, roomId.value!!)
     }
 }
 
@@ -211,41 +268,80 @@ fun OnlineGame() {
 @Composable
 fun TicTacToeGrid(
     boardState: List<String>,
-    onCellClick: (Int) -> Unit,
-    modifier: Modifier = Modifier
+    onCellClick: (Int) -> Unit
 ) {
-    Column(
-        modifier = modifier
-    ) {
-        for (row in 0..2) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceEvenly
-            ) {
-                for (col in 0..2) {
-                    val index = row * 3 + col
-                    Box(
-                        modifier = Modifier
-                            .size(100.dp)
-                            .border(2.dp, Color.Black)
-                            .clickable { onCellClick(index) },
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = boardState[index],
-                            fontSize = 24.sp,
-                            color = when (boardState[index]) {
-                                "X" -> Color.Blue
-                                "O" -> Color.Red
-                                else -> Color.Black
-                            }
-                        )
+    // Ajusta el tamaño total deseado del tablero (ej: 300x300)
+    Box(
+        modifier = Modifier
+        .size(400.dp),
+        contentAlignment = Alignment.Center) {
+
+        // 1) Dibuja las líneas en un Canvas de fondo
+        Canvas(modifier = Modifier.fillMaxSize()) {
+            val width = size.width
+            val height = size.height
+            val cellWidth = width / 3
+            val cellHeight = height / 3
+            val lineColor = Color.White
+            val lineStroke = 4f
+
+            // Líneas horizontales (dos líneas internas)
+            drawLine(
+                color = lineColor,
+                start = Offset(0f, cellHeight),
+                end = Offset(width, cellHeight),
+                strokeWidth = lineStroke
+            )
+            drawLine(
+                color = lineColor,
+                start = Offset(0f, cellHeight * 2),
+                end = Offset(width, cellHeight * 2),
+                strokeWidth = lineStroke
+            )
+
+            // Líneas verticales (dos líneas internas)
+            drawLine(
+                color = lineColor,
+                start = Offset(cellWidth, 0f),
+                end = Offset(cellWidth, height),
+                strokeWidth = lineStroke
+            )
+            drawLine(
+                color = lineColor,
+                start = Offset(cellWidth * 2, 0f),
+                end = Offset(cellWidth * 2, height),
+                strokeWidth = lineStroke
+            )
+
+            // Borde externo (opcional si quieres remarcarlo)
+            // drawRect(...) o drawLine en las orillas
+        }
+
+        // 2) Las celdas clicables
+        Column(modifier = Modifier.fillMaxSize()) {
+            for (row in 0 until 3) {
+                Row(modifier = Modifier.weight(1f)) {
+                    for (col in 0 until 3) {
+                        val index = row * 3 + col
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight()
+                                .clickable { onCellClick(index) },
+                            contentAlignment = Alignment.Center
+                        ) {
+                            // Dibuja la X o la O
+                            CellContent(boardState[index])
+                        }
                     }
                 }
             }
         }
     }
 }
+
+
+
 
 private fun handlePlayerMove(
     index: Int,
@@ -448,28 +544,33 @@ fun makeMove(
     index: Int,
     playerId: String
 ) {
+
     val updatedBoard = board.toMutableList()
     val currentPlayerSymbol = if (playerId.contains("Player_1")) "X" else "O"
     updatedBoard[index] = currentPlayerSymbol
     val nextPlayerSymbol = if (currentPlayerSymbol == "X") "O" else "X"
 
-    gamesRef.child(roomId).updateChildren(
-        mapOf(
-            "board" to updatedBoard,
-            "currentPlayer" to nextPlayerSymbol
-        )
+
+    val updates = mapOf(
+        "board" to updatedBoard,
+        "currentPlayer" to nextPlayerSymbol,
+        "winner" to checkWinner(updatedBoard),
+        "isDraw" to isBoardFull(updatedBoard)
     )
+
+    gamesRef.child(roomId).updateChildren(updates)
 }
 
 
 // Pantalla principal del juego online
 @Composable
-fun OnlineGameRoom(gamesRef: DatabaseReference, roomId: String, playerId: String) {
+fun OnlineGameRoom(gamesRef: DatabaseReference, roomId: String) {
     val boardState = remember { mutableStateOf(List(9) { "" }) }
     val currentPlayer = remember { mutableStateOf("X") }
     val winner = remember { mutableStateOf<String?>(null) }
     val isDraw = remember { mutableStateOf(false) }
     val playerSymbol = remember { mutableStateOf("") }
+    val context = LocalContext.current
 
     // Escucha actualizaciones del juego
     LaunchedEffect(roomId) {
@@ -477,7 +578,14 @@ fun OnlineGameRoom(gamesRef: DatabaseReference, roomId: String, playerId: String
             override fun onDataChange(snapshot: DataSnapshot) {
                 val gameData = snapshot.getValue(GameData::class.java)
                 if (gameData != null) {
-                    playerSymbol.value = if (gameData.player1 == playerId) "X" else "O"
+                    // Actualiza estados locales
+                    boardState.value = gameData.board
+                    currentPlayer.value = gameData.currentPlayer
+                    winner.value = gameData.winner
+                    isDraw.value = gameData.isDraw
+
+                    // Mantén la lógica para asignar el símbolo a cada jugador
+                    playerSymbol.value = if (gameData.currentPlayer == "X") "Player_1" else "Player_2"
                 }
             }
 
@@ -488,6 +596,14 @@ fun OnlineGameRoom(gamesRef: DatabaseReference, roomId: String, playerId: String
     }
 
     // UI del tablero y estado del juego
+    Box(
+        modifier = Modifier
+
+            .fillMaxSize()
+            .background(Color.Black)
+            .padding(top = 32.dp),
+        contentAlignment = Alignment.Center
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -499,11 +615,27 @@ fun OnlineGameRoom(gamesRef: DatabaseReference, roomId: String, playerId: String
         TicTacToeGrid(
             boardState = boardState.value,
             onCellClick = { index ->
-                if (boardState.value[index].isEmpty() &&
-                    winner.value == null &&
-                    currentPlayer.value == playerSymbol.value // Ahora comparamos símbolos
-                ) {
-                    makeMove(gamesRef, roomId, boardState.value, index, playerId)
+                val cellEmpty = boardState.value[index].isEmpty()
+                val noWinner = winner.value == null
+                val turn1 = currentPlayer.value == "X" && playerSymbol.value == "Player_1"
+                val turn2 = currentPlayer.value == "O" && playerSymbol.value == "Player_2"
+
+                println("Click en celda: $index")
+                println("  - cellEmpty     = $cellEmpty")
+                println("  - noWinner      = $noWinner")
+                println("  - currentPlayer = ${currentPlayer.value}")
+                println("  - playerSymbol  = ${playerSymbol.value}")
+
+                if (cellEmpty && noWinner) {
+
+                    if (turn1)
+                        makeMove(gamesRef, roomId, boardState.value, index, "Player_1")
+                    val soundResId = if (currentPlayer.value == "X") R.raw.x_sound else R.raw.o_sound
+                    playSound(context, soundResId)
+                    if (turn2)
+                        makeMove(gamesRef, roomId, boardState.value, index, "Player_2")
+                } else {
+                    println("NO se llama a makeMove. No cumplen todas las condiciones.")
                 }
             }
         )
@@ -513,7 +645,7 @@ fun OnlineGameRoom(gamesRef: DatabaseReference, roomId: String, playerId: String
             fontSize = 20.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
         )
-    }
+    }}
 }
 
 // Crear una sala nueva
@@ -521,7 +653,8 @@ fun createGameRoom(gamesRef: DatabaseReference, playerId: String): String {
     val roomId = "room_${System.currentTimeMillis()}"
     val initialGame = GameData(
         player1 = playerId,
-        player2 = null
+        player2 = null,
+        currentPlayer = "X",
     )
     gamesRef.child(roomId).setValue(initialGame)
     return roomId
